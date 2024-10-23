@@ -19,7 +19,7 @@ j = 1
 i = 1
 S = torch.randn(d, M, dtype = torch.float64)
 W_star_crloss = np.random.randn(d, N)
-W_star_mseloss = np.random.randn(d, N)
+W_star_mseloss = np.random.randn(d, 1)
 class Net(nn.Module):
     def __init__(self, d, N, M):
         super().__init__()
@@ -59,14 +59,13 @@ for epoch in tqdm(epoch_num):
 plt.legend()
 plt.show()
 
-
 # MSEloss, 比较single epoch和multiple epoch的效果
 plt.figure()
 plt.title("mse_loss: single epoch vs multiple epoch")
 plt.xlabel("data number")
 plt.ylabel("loss")
 for epoch in tqdm(epoch_num):
-    model = Net(d, N, M).double()
+    model = Net(d, 1, M).double()
     data_num = int(compute / epoch)
     X = torch.randn(data_num, d, dtype = torch.float64)
     y = torch.matmul(X, torch.tensor(W_star_mseloss))
@@ -75,6 +74,36 @@ for epoch in tqdm(epoch_num):
 plt.legend()
 plt.show()
 
+# cross_entropy_loss, 比较single epoch和multiple epoch的效果, 加入noise
+plt.figure()
+plt.title("cr_loss: single epoch vs multiple epoch + noise")
+plt.xlabel("data number")
+plt.ylabel("loss")
+for epoch in tqdm(epoch_num):
+    model = Net(d, N, M).double()
+    data_num = int(compute / epoch)
+    X = torch.randn(data_num, d, dtype = torch.float64)
+    prob_mat = F.softmax(torch.matmul(X, torch.tensor(W_star_crloss)))
+    y = torch.multinomial(prob_mat, num_samples = 1, replacement=True).view(-1)
+    loss_history = model.train(X, y, epoch, lr, criterion = F.cross_entropy)
+    plt.plot(range(1, compute + 1), loss_history, label='epoch=%d' % epoch)
+plt.legend()
+plt.show()
+
+# MSEloss, 比较single epoch和multiple epoch的效果, 加入noise
+plt.figure()
+plt.title("mse_loss: single epoch vs multiple epoch")
+plt.xlabel("data number")
+plt.ylabel("loss")
+for epoch in tqdm(epoch_num):
+    model = Net(d, 1, M).double()
+    data_num = int(compute / epoch)
+    X = torch.randn(data_num, d, dtype = torch.float64)
+    y = torch.matmul(X, torch.tensor(W_star_mseloss)) + torch.randn(data_num, 1, dtype = torch.float64)
+    loss_history = model.train(X, y, epoch, lr, criterion = F.mse_loss)
+    plt.plot(range(1, compute + 1), loss_history, label='epoch=%d' % epoch)
+plt.legend()
+plt.show()
 # cross_entropy_loss的scaling law
 
 # 绘制关于M的scaling law：
